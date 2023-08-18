@@ -1,0 +1,25 @@
+<%- include('header', {chainInfo: chainInfo, title: "All Chains"}); %>
+
+<table id="tablechains" class="display" style='width: 100%'>
+      <thead>
+        <tr>
+          <th>Chain</th>
+          <th>Your Holdings</th>
+          <th>Latest Block</th>
+          <th>Latest Finalized</th>
+          <th>Avg DAU (7d)</th>
+        </tr>
+      </thead>
+</table>
+
+<%- include('footer', {apiUrl: apiUrl}); %>
+<script>
+var relaychainfilter = "";
+var accounts = <%- JSON.stringify(accounts); %>;
+$(document).ready(function() {
+show_chains()
+})
+</script>
+
+<script src="/chainui.js"></script>
+<script src="/chains.js"></script>

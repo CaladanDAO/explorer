@@ -1,0 +1,33 @@
+<script type="text/javascript" src="/js/mdb.min.js"></script>
+<div class="alert alert-info" id="apidocs" role="alert">
+<B>Query <i>everything</i> on Caladan from `awesome-web3.caladan_evm.*` in <a href="https://cloud.google.com/bigquery/public-data">Google BigQuery</a></B>
+</div>
+
+<div>
+<span>
+<a href="https://github.com/CaladanDAO/explorer/issues" class="btn btn-link text-capitalize" id="reportIssue"><i class="fa-regular fa-comment"></i> Report Data Issue / Bugs</a>
+
+<a href="https://github.com/CaladanDAO/explorer" class="btn btn-link text-capitalize" id="matrix"><i class="fa-brands fa-github"></i> Github</a>
+</span>
+<span style='float: right'>
+<a href="/privacy" class="btn btn-link text-capitalize" id="apiuptime"><i class="fa-regular fa-address-card"></i> Privacy</a>
+</span>
+</div>
+
+</div>
+<% if ( req.cookies.consent == undefined ) { %>
+<div id="cookieconsent" class="cookie-consent"> <span>This site uses cookies to enhance user experience. See <a href="/privacy" class="ml-1 text-decoration-none">Privacy policy</a> </span>
+    <div class=" ml-2 d-flex align-items-center justify-content-center g-2">
+       <button id="allowCookies" class="allow-button mr-1">Accept</button>
+    </div>
+</div>
+
+<script>
+let allowCookiesButton = document.getElementById("allowCookies");
+allowCookiesButton.addEventListener("click", (e) => {
+  setConsent(1)
+});
+</script>
+<% } %>
+</body>
+</html>
