@@ -29,4 +29,4 @@ By default, the configs use https://api.caladandao.org
 
 ## License
 
-Polkaholic is [GPL 3.0 licensed](LICENSE).
+The CaladanDAO Explorer is under [Fair Use License](LICENSE).

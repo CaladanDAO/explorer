@@ -1,18 +1,5 @@
-// Copyright 2022 Colorful Notion, Inc.
-// This file is part of Polkaholic.
-
-// Polkaholic is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Polkaholic is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Polkaholic.  If not, see <http://www.gnu.org/licenses/>.
+// Copyright 2023 Caladan DAO
+// This file is part of CaladanDAO Block Explorer.
 
 const dotenv = require('dotenv').config();
 const express = require('express')
@@ -176,10 +163,8 @@ app.use(async (req, res, next) => {
 
 app.get('/', async (req, res) => {
     try {
-	console.log(1);
         let chains = await query.get_chains_external();
         if (chains) {
-	console.log(chains);
             res.write(JSON.stringify(chains));
             await query.tallyAPIKey(getapikey(req));
             return res.end();
@@ -187,7 +172,6 @@ app.get('/', async (req, res) => {
             return res.sendStatus(404);
         }
     } catch (err) {
-	console.log("NO", err);
         return res.status(400).json({
             error: err.toString()
         });
@@ -344,7 +328,6 @@ app.get('/chain/:chainID_or_chainName?', async (req, res) => {
     try {
         let chainID_or_chainName = ( req.params["chainID_or_chainName"] != undefined ) && req.params["chainID_or_chainName"].length ? req.params["chainID_or_chainName"] : "1";
         let isExternal = true
-	console.log("CHAIN", chainID_or_chainName);
         let chain = await query.getChain(chainID_or_chainName, isExternal);
         if (chain) {
             let blocks = await query.getChainRecentBlocks(chainID_or_chainName);
@@ -453,16 +436,6 @@ app.get('/hash/:hash', async (req, res) => {
         let h = req.params['hash'];
         let hashrec = await query.lookupHash(h);
         if (hashrec) {
-            if ((hashrec.status != undefined) && (hashrec.status == "unfinalized") && (hashrec.blockNumber != undefined) && (hashrec.chainID != undefined)) {
-                let chainID = hashrec.chainID;
-                let chain = await query.getChain(chainID);
-                if (chain.blocksFinalized >= hashrec.blockNumber) {
-                    let blockHashFinalized = await query.getBlockHashFinalized(chainID, hashrec.blockNumber);
-                    if (blockHashFinalized) {
-                        hashrec.blockHashFinalized = blockHashFinalized;
-                    }
-                }
-            }
             res.write(JSON.stringify(hashrec));
             await query.tallyAPIKey(getapikey(req));
             res.end();
@@ -505,7 +478,7 @@ app.get('/block/:chainID_or_chainName/:blockNumber', async (req, res) => {
         let blockNumber = parseInt(req.params["blockNumber"], 10);
         let blockHash = (req.query.blockhash != undefined) ? req.query.blockhash : false
         let [decorate, decorateExtra] = decorateOpt(req)
-        console.log(`getBlock (${chainID_or_chainName}, ${blockNumber}, ${blockHash}, decorate=${decorate}, decorateExtra=${decorateExtra})`)
+        //console.log(`getBlock (${chainID_or_chainName}, ${blockNumber}, ${blockHash}, decorate=${decorate}, decorateExtra=${decorateExtra})`)
         var blk = await query.getBlock(chainID_or_chainName, blockNumber, blockHash, decorate, decorateExtra);
         if (blk) {
             res.write(JSON.stringify(blk));

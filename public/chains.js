@@ -62,11 +62,11 @@ async function show_chains() {
             ],
             columnDefs: [{
                 "className": "dt-right",
-                "targets": [2, 3, 4]
+                "targets": [2, 3]
             }],
             order: [
-                [2, "desc"],
-                [4, "desc"],
+                [3, "desc"],
+                [2, "desc"]
             ],
             columns: [{
                 data: 'id',
@@ -105,19 +105,6 @@ async function show_chains() {
                         try {
                             let s = "<BR>" + presentTS(row.lastCrawlTS);
                             return presentBlockNumber(row.id, "", row.blocksCovered) + s;
-                        } catch {
-                            return "-"
-                        }
-                    }
-                    return data;
-                }
-            }, {
-                data: 'blocksFinalized',
-                render: function(data, type, row, meta) {
-                    if (type == 'display') {
-                        try {
-                            let s = "<BR>" + presentTS(row.lastFinalizedTS);
-                            return presentBlockNumber(row.id, "", row.blocksFinalized) + s;
                         } catch {
                             return "-"
                         }

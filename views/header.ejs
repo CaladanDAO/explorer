@@ -48,59 +48,58 @@ let chains = [
     {
         "isRelayChain": true,
         "chainID": 1,
-        "paraID": 0,
         "id": "ethereum",
-        "iconUrl": "https://cdn.polkaholic.io/ethereum.png",
+        "iconUrl": "https://cdn.caladandao.org/ethereum.png",
         "chainName": "Ethereum",
-        "ss58Format": 0
-    },
-    {
-        "chainID": 1284,
-        "paraID": 1284,
-        "id": "moonbeam",
-        "iconUrl": "https://cdn.polkaholic.io/moonbeam.png",
-        "chainName": "Moonbeam",
-        "ss58Format": 1284,
-        "isEVM": 1,
-        "hasSystemContracts": 1,
-        "hasProjects": 1
-    },
-    {
-        "chainID": 592,
-        "paraID": 592,
-        "id": "astar",
-        "iconUrl": "https://cdn.polkaholic.io/astar.png",
-        "chainName": "Astar",
-        "ss58Format": 5,
-    },
-    {
-        "chainID": 424,
-        "paraID": 424,
-        "id": "publicgoods",
-        "iconUrl": "https://cdn.polkaholic.io/publicgoods.png",
-        "chainName": "Public Goods",
-        "ss58Format": 68
-    },
-    {
-        "chainID": 10,
-        "id": "optimism",
-        "iconUrl": "https://cdn.polkaholic.io/optimism.svg",
-        "chainName": "Optimism",
-        "ss58Format": 67
-    },
-    {
-        "chainID": 42161,
-        "id": "arbitrum",
-        "iconUrl": "https://cdn.polkaholic.io/arbitrum.png",
-        "chainName": "Arbitrum",
-        "ss58Format": 2
     },
     {
         "chainID": 8453,
         "id": "base",
-        "iconUrl": "https://cdn.polkaholic.io/base.jpg",
-        "chainName": "Base",
-        "ss58Format": 2
+        "iconUrl": "https://cdn.caladandao.org/base.jpg",
+        "chainName": "Base"
+    },
+    {
+        "chainID": 10,
+        "id": "optimism",
+        "iconUrl": "https://cdn.caladandao.org/optimism.svg",
+        "chainName": "Optimism",
+    },
+    {
+        "chainID": 42161,
+        "id": "arbitrum",
+        "iconUrl": "https://cdn.caladandao.org/arbitrum.png",
+        "chainName": "Arbitrum"
+    },
+    {
+        "chainID": 424,
+        "id": "publicgoods",
+        "iconUrl": "https://cdn.caladandao.org/publicgoods.svg",
+        "chainName": "Public Goods",
+    },
+    {
+        "chainID": 592,
+        "paraID": 2006,
+	"relayChain": "polkadot",
+        "id": "astar",
+        "iconUrl": "https://cdn.caladandao.org/astar.png",
+        "chainName": "Astar",
+        "ss58Format": 5
+    },
+    {
+        "chainID": 1284,
+        "paraID": 2004,
+	"relayChain": "polkadot",
+        "id": "moonbeam",
+        "iconUrl": "https://cdn.caladandao.org/moonbeam.png",
+        "chainName": "Moonbeam"
+    },
+    {
+        "chainID": 1285,
+        "id": "moonriver",
+	"relayChain": "kusama",
+        "paraID": 2023,
+        "iconUrl": "https://cdn.caladandao.org/moonriver.png",
+        "chainName": "Moonriver"
     }
   ]
   let selchain = "all";

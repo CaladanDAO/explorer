@@ -1,18 +1,5 @@
-// Copyright 2023 Colorful Notion, Inc.
+// Copyright 2023 Caladan DAO
 // This file is part of CaladanDAO Block Explorer.
-
-// Polkaholic is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// The CaladanDAO Block Explorer code is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the CaladanDAO Block Explorer.  If not, see <http://www.gnu.org/licenses/>.
 
 const paraTool = require("./paraTool");
 const uiTool = require("./uiTool");
@@ -143,9 +130,7 @@ module.exports = class AssetManager extends EvmManager {
 
     // reads all the decimals from the chain table and then the asset mysql table
     async init_chainInfos() {
-        let chainSQL = `select id, chain.chainID, chain.chainName, chain.relayChain, chain.paraID, ss58Format, isEVM, chain.iconUrl,
- githubURL, subscanURL, parachainsURL, dappURL, WSEndpoint
- from chain where ( (crawling = 1 or chain.paraID > 0) and id is not null )`
+        let chainSQL = `select id, chainID, chainName, relayChain, ss58Format, iconUrl from chain where crawling = 1`
         var chains = await this.poolREADONLY.query(chainSQL);
         let chainInfoMap = {}
         let chainNameMap = {}
@@ -223,27 +208,6 @@ module.exports = class AssetManager extends EvmManager {
         }
         return ([null, null]);
 
-    }
-
-    async get_skipStorageKeys() {
-        if (Object.keys(this.skipStorageKeys).length > 0) return;
-        this.skipStorageKeys = {};
-        var storageKeysList = await this.poolREADONLY.query(`select palletName, storageName, storageKey from chainPalletStorage where skip = 1`);
-        if (storageKeysList.length > 0) {
-            for (const sk of storageKeysList) {
-                this.skipStorageKeys[`${sk.storageKey}`] = sk;
-            }
-        }
-    }
-
-    async init_paras() {
-        let paras = await this.poolREADONLY.query(`select id, chainID, chainName, relayChain, paraID, concat(relayChain,'-',paraID) as fullparaID, symbol from chain order by relayChain desc, chainID;`);
-        let paraMap = {}
-        for (const p of paras) {
-            paraMap[p.fullparaID] = p
-            //this.paras[p.fullparaID] = p
-        }
-        this.paras = paraMap
     }
 
     async init_chain_asset_and_nativeAsset() {

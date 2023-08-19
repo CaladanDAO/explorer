@@ -1,18 +1,4 @@
-// Copyright 2022 Colorful Notion, Inc.
-// This file is part of Polkaholic.
-
-// Polkaholic is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Polkaholic is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Polkaholic.  If not, see <http://www.gnu.org/licenses/>.
+// Copyright 2023 Caladan DAO                                                                                                                                                                              // This file is part of CaladanDAO Block Explorer.
 
 const CaladanDB = require("./caladanDB");
 const paraTool = require("./paraTool");
@@ -102,7 +88,7 @@ module.exports = class EvmManager extends CaladanDB {
                 }
             } else if (dLog.decodeStatus == "error") {
                 console.log(`dLog Error case ***`, dLog)
-            } else if (dLog.decodeStatus == "error") {
+            } else if (dLog.decodeStatus == "unknown") {
                 console.log(`dLog Unknown case ***`, dLog)
             }
         }
@@ -122,7 +108,7 @@ module.exports = class EvmManager extends CaladanDB {
         if (decodedTxnInput.decodeStatus == "success") {
             //console.log(`decodedTxnInput success case ***`, decodedTxnInput)
         } else if (decodedTxnInput.decodeStatus == "unknown") {
-            console.log(`decodedTxnInput unknown case ***`, decodedTxnInput)
+            //console.log(`decodedTxnInput unknown case ***`, decodedTxnInput)
         } else if (decodedTxnInput.decodeStatus == "error") {
             console.log(`decodedTxnInput Error case ***`, decodedTxnInput)
         }

@@ -1,4 +1,4 @@
-// Copyright 2022 Colorful Notion, Inc.
+// Copyright 2023 Caladan DAO
 // This file is part of the Caladan DAO Block Explorer.
 
 // The Caladan DAO block explorer is free software: you can redistribute it and/or modify
@@ -157,7 +157,6 @@ async function getHostChain(req, reqChainID = null) {
     } catch (err) {
         console.log(`getHostChain err`, err.toString())
     }
-    console.log(`getHostChain(${reqChainID}) RETURNS`, chainID, id, chain);
     return [chainID, id, chain];
 }
 
@@ -638,8 +637,7 @@ app.get('/chainlog/:chainIDorChainName?', async (req, res) => {
 app.get('/blocks/:chainIDorChainName?', async (req, res) => {
     try {
         let chainIDorChainName = req.params.chainIDorChainName ? req.params.chainIDorChainName : null;
-	console.log(`CALL getHostChain(${chainIDorChainName})`);
-        let [chainID, id, chain] = await getHostChain(req, chainIDorChainName)
+	let [chainID, id, chain] = await getHostChain(req, chainIDorChainName)
         if (chain) {
             res.render('blocks', {
                 chainID: chainID,
@@ -717,10 +715,7 @@ app.get('/block/:chainID_or_chainName/:blockNumber', async (req, res) => {
         let [decorate, decorateExtra] = decorateOptUI(req)
         var b = await query.getBlock(chainID, blockNumber, blockHash, decorate, decorateExtra);
         if (b) {
-            let view = "block";
-            if (chain.isEVM == 1) {
-                view = "evmBlock"
-            }
+            let view = "evmBlock"
             res.render(view, {
                 b: b,
                 blockNumber: blockNumber,

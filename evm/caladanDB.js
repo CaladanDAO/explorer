@@ -1,19 +1,6 @@
-// Copyright 2022-2023 Colorful Notion, Inc.
+// Copyright 2023 Caladan DAO
 // This file is part of the CaladanDAO Block Explorer.
-
-// Polkaholic is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Polkaholic is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Polkaholic.  If not, see <http://www.gnu.org/licenses/>.
-
+    
 const ini = require('node-ini');
 
 const {
@@ -298,36 +285,6 @@ module.exports = class CaladanDB {
         }
     }
 
-    async getKnownParachains() {
-        let knownParaChainsMap = {}
-        var knownParaChains = await this.poolREADONLY.query(`select chainID, id, chainName, relayChain, paraID from chain`);
-        if (knownParaChains.length > 0) {
-            for (const kp of knownParaChains) {
-                let fullParaID = `${kp.relayChain}-${kp.paraID}`
-                knownParaChainsMap[fullParaID] = kp
-            }
-        }
-        return knownParaChainsMap
-    }
-
-    async getChainLiquidityPair(chainID) {
-        var sql = `select asset, chainID from asset where chainID = ${chainID} and assetType = 'LiquidityPair'`
-        var assets = await this.poolREADONLY.query(sql);
-        return assets
-    }
-
-    getSpecVersionForBlockNumber(chainID, blockNumber) {
-        if (!this.specVersions) return (0);
-        if (!this.specVersions[chainID.toString()]) return (0);
-        let sv = this.specVersions[chainID.toString()];
-        for (let i = sv.length - 1; i >= 0; i--) {
-            if (blockNumber >= sv[i].blockNumber) {
-                return (sv[i].specVersion);
-            }
-        }
-        return (0);
-    }
-
     getChainDecimal(chainID) {
         if (chainID == undefined || chainID === null || chainID === false) {
             console.log("FAILED getChainDecimal", chainID);
@@ -428,50 +385,6 @@ module.exports = class CaladanDB {
         }
     }
 
-    getRelayChainID(chainID) {
-        if (chainID == paraTool.chainIDPolkadot || chainID == paraTool.chainIDKusama) {
-            return (chainID);
-        }
-        if (this.chainInfos[chainID] == undefined) {
-            console.log("1: could not determine relaychainID", chainID);
-            return (false);
-        }
-        let relayChain = this.chainInfos[chainID].relayChain;
-        if (relayChain == "kusama") return (paraTool.chainIDKusama);
-        if (relayChain == "polkadot") return (paraTool.chainIDPolkadot);
-        console.log("2: could not determine relaychainID", chainID);
-        return (false);
-    }
-
-    async getParas() {
-        let paras = await this.poolREADONLY.query(`select id, chainID, chainName, relayChain, paraID, concat(relayChain,'-',paraID) as fullparaID, symbol from chain order by relayChain desc, chainID;`);
-        return (paras);
-    }
-
-    getParaInfo(paraID, sourceChainID) {
-        sourceChainID = parseInt(sourceChainID, 10)
-        let relayChainType = sourceChainID == paraTool.chainIDPolkadot ? "Polkadot" : "Kusama"
-        let relayChainSymbol = sourceChainID == paraTool.chainIDPolkadot ? "DOT" : "KSM"
-        let fullParaID = sourceChainID == paraTool.chainIDPolkadot ? `polkadot-${paraID}` : `kusama-${paraID}`
-
-        let paraInfo = this.paras[fullParaID]
-        if (paraInfo != undefined) {
-            return {
-                paraId: parseInt(paraID, 10),
-                name: (paraInfo.chainName != undefined) ? paraInfo.chainName : paraInfo.id,
-                relayChain: relayChainType,
-                relayChainSymbol: relayChainSymbol
-            }
-        } else {
-            return {
-                paraId: parseInt(paraID, 10),
-                name: null,
-                relayChain: relayChainType,
-                relayChainSymbol: relayChainSymbol
-            }
-        }
-    }
-
     getNameByChainID(chainID) {
         if (this.chainInfos[chainID] != undefined) {
             // [chainID, id]
@@ -496,14 +409,6 @@ module.exports = class CaladanDB {
             return [this.chainNames[id].chainID, id]
         }
         return [false, false]
-    }
-
-    getTableChain(chainID) {
-        return this.instance.table("chain" + chainID);
-    }
-
-    getEvmTableChain(chainID) {
-        return this.instance.table("evmchain" + chainID);
     }
 
     currentTS() {
@@ -640,104 +545,32 @@ module.exports = class CaladanDB {
     }
 
 
-    async getChains(crawling = 1, orderBy = "valueTransfersUSD7d DESC") {
-        let chains = await this.poolREADONLY.query(`select id, ss58Format as prefix, chain.chainID, chain.chainName, blocksCovered, blocksFinalized, chain.symbol, lastCrawlDT, lastFinalizedDT, unix_timestamp(lastCrawlDT) as lastCrawlTS,
-unix_timestamp(lastFinalizedDT) as lastFinalizedTS,  iconUrl, numExtrinsics7d, numExtrinsics30d, numExtrinsics, numSignedExtrinsics7d, numSignedExtrinsics30d, numSignedExtrinsics, numTransfers7d, numTransfers30d, numTransfers, numEvents7d, numEvents30d, numEvents,
-valueTransfersUSD7d, valueTransfersUSD30d, valueTransfersUSD, numTransactionsEVM, numTransactionsEVM7d, numTransactionsEVM30d, numAccountsActive, numAccountsActive7d, numAccountsActive30d, chain.relayChain, chain.paraID, totalIssuance, lastUpdateChainAssetsTS,
-onfinalityID, onfinalityStatus, onfinalityConfig, isEVM, chain.asset, WSEndpoint, WSEndpoint2, WSEndpoint3, active, crawlingStatus, githubURL, substrateURL, parachainsURL, dappURL, 0 as numHolders
-from chain where crawling = ${crawling} order by ${orderBy}`);
+    async getChains(crawling = 1, orderBy = "numAccountsActive DESC") {
+        let chains = await this.poolREADONLY.query(`select id, chainID, chainName, blocksCovered, symbol, lastCrawlDT,  unix_timestamp(lastCrawlDT) as lastCrawlTS,
+ iconUrl, numTransactionsEVM, numTransactionsEVM7d, numTransactionsEVM30d, numAccountsActive, numAccountsActive7d, numAccountsActive30d, relayChain, UNIX_TIMESTAMP(lastUpdateBlockLogDT) lastUpdateBlockLogTS, lastUpdateBlockLogDT, crawlingStatus from chain where crawling = ${crawling} order by ${orderBy}`);
         return (chains);
-    }
-
-    async getChainsForAdmin(crawling = 1) {
-        let chains = await this.poolREADONLY.query(`select id, ss58Format as prefix, chainID, chain.chainName, symbol, iconUrl, relayChain, onfinalityID, onfinalityStatus, onfinalityConfig, isEVM, asset, WSEndpoint, WSEndpoint2, WSEndpoint3, paraID from chain where crawling = ${crawling} order by chainID`);
-        return (chains);
-    }
-
-    async getChainForAdmin(chainID = 0) {
-        let chains = await this.poolREADONLY.query(`select id, ss58Format as prefix, chainID, chain.chainName, symbol, iconUrl, relayChain, onfinalityID, onfinalityStatus, onfinalityConfig, isEVM, asset, WSEndpoint, WSEndpoint2, WSEndpoint3, paraID from chain where chainID = ${chainID} order by chainID`);
-        if (chains.length == 0) return (false);
-        return (chains[0]);
     }
 
     async get_chains_external(crawling = 1) {
-        let chains = await this.poolREADONLY.query(`select id, ss58Format as prefix, chain.chainID, CONCAT(UPPER(SUBSTRING(chain.chainName,1,1)),LOWER(SUBSTRING(chain.chainName,2))) AS chainName, chain.symbol, unix_timestamp(lastFinalizedDT) as lastFinalizedTS, iconUrl,
-numExtrinsics7d, numExtrinsics30d, numExtrinsics, numSignedExtrinsics7d, numSignedExtrinsics30d, numSignedExtrinsics, numTransfers7d, numTransfers30d, numTransfers, numEvents7d, numEvents30d, numEvents, valueTransfersUSD7d, valueTransfersUSD30d, valueTransfersUSD,
-numTransactionsEVM, numTransactionsEVM7d, numTransactionsEVM30d, 0 as numHolders, numAccountsActive, numAccountsActive7d, numAccountsActive30d, chain.relayChain, chain.paraID, totalIssuance, isEVM, blocksCovered, blocksFinalized,
-crawlingStatus, githubURL, substrateURL, parachainsURL, dappURL, chain.asset
-from chain where crawling = ${crawling} order by relayChain, id, chainID;`);
-        return (chains);
+        return await this.getChains();
     }
 
-    async getChain(chainID, withSpecVersions = false) {
-        var chains = await this.poolREADONLY.query(`select id, ss58Format as prefix, chainID, chainName, evmChainID, blocksCovered, blocksFinalized, isEVM, backfillLookback, lastUpdateChainAssetsTS, onfinalityID, onfinalityStatus, onfinalityConfig, numHolders, asset, relayChain, lastUpdateStorageKeysTS, crawlingStatus, etherscanAPIURL,
-numExtrinsics, numExtrinsics7d, numExtrinsics30d,
-numSignedExtrinsics, numSignedExtrinsics7d, numSignedExtrinsics30d,
-numTransfers, numTransfers7d, numTransfers30d,
-numEvents, numEvents7d, numEvents30d,
+    async getChain(chainID_or_chainName) {
+        try {
+            let [chainID, id] = this.convertChainID(chainID_or_chainName)
+            let sql = `select id, chainID, chainName, blocksCovered, crawlingStatus, etherscanAPIURL,
 numTransactionsEVM, numTransactionsEVM7d, numTransactionsEVM30d,
-numReceiptsEVM, numReceiptsEVM7d, numReceiptsEVM30d,
-floor(gasUsed / (numEVMBlocks+1)) as gasUsed,
-floor(gasUsed7d / (numEVMBlocks7d+1)) as gasUsed7d,
-floor(gasUsed30d / (numEVMBlocks30d+1)) as gasUsed30d,
-floor(gasLimit / (numEVMBlocks+1)) as gasLimit,
-floor(gasLimit7d / (numEVMBlocks7d+1)) as gasLimit7d,
-floor(gasLimit30d / (numEVMBlocks30d+1)) as gasLimit30d
-from chain where chainID = '${chainID}' limit 1`);
-        if (chains.length == 0) return (false);
-        let chain = chains[0];
-        if (withSpecVersions) {
-            let specVersions = await this.poolREADONLY.query(`select specVersion, blockNumber, blockHash from specVersions where chainID = '${chainID}' and blockNumber > 0 order by specVersion`);
-            chain.specVersions = specVersions;
+floor(gasUsed / (numEVMBlocks+1)) as gasUsed,floor(gasUsed7d / (numEVMBlocks7d+1)) as gasUsed7d,floor(gasUsed30d / (numEVMBlocks30d+1)) as gasUsed30d,
+floor(gasLimit / (numEVMBlocks+1)) as gasLimit,floor(gasLimit7d / (numEVMBlocks7d+1)) as gasLimit7d,floor(gasLimit30d / (numEVMBlocks30d+1)) as gasLimit30d
+from chain where chainID = '${chainID}' limit 1`
+            var chains = await this.poolREADONLY.query(sql);
+            if (chains.length == 0) return (false);
+            let chain = chains[0];
+            return chain;
+        } catch (err) {
+            console.log(err);
         }
-        // because some chains don't have subscribeStorage support (and subscribeStorage updates blocksCovered...)
-        if (chain.blocksCovered == null || chain.blocksCovered < chain.blocksFinalized) {
-            chain.blocksCovered = chain.blocksFinalized
-        }
-        if (chainID == paraTool.chainIDPolkadot || chainID == paraTool.chainIDKusama) {
-            let paraIDs = await this.poolREADONLY.query(`select paraID from chainparachain where chainID = '${chainID}'`);
-            for (let i = 0; i < paraIDs.length; i++) {
-                let paraID = paraIDs[i].paraID;
-                this.paraIDs.push(paraID);
-
-            }
-        }
-        return chain;
-    }
-    async getChainWithVersion(chainID, withSpecVersions = false) {
-        var chains = await this.poolREADONLY.query(`select id, ss58Format as prefix, chainID, chainName, blocksCovered, blocksFinalized, isEVM, backfillLookback, lastUpdateChainAssetsTS, onfinalityID, onfinalityStatus, onfinalityConfig, numHolders, asset, relayChain, lastUpdateStorageKeysTS, crawlingStatus,
-numExtrinsics, numExtrinsics7d, numExtrinsics30d,
-numSignedExtrinsics, numSignedExtrinsics7d, numSignedExtrinsics30d,
-numTransfers, numTransfers7d, numTransfers30d,
-numEvents, numEvents7d, numEvents30d,
-numTransactionsEVM, numTransactionsEVM7d, numTransactionsEVM30d,
-numReceiptsEVM, numReceiptsEVM7d, numReceiptsEVM30d,
-floor(gasUsed / (numEVMBlocks+1)) as gasUsed,
-floor(gasUsed7d / (numEVMBlocks7d+1)) as gasUsed7d,
-floor(gasUsed30d / (numEVMBlocks30d+1)) as gasUsed30d,
-floor(gasLimit / (numEVMBlocks+1)) as gasLimit,
-floor(gasLimit7d / (numEVMBlocks7d+1)) as gasLimit7d,
-floor(gasLimit30d / (numEVMBlocks30d+1)) as gasLimit30d
-from chain where chainID = '${chainID}' limit 1`);
-        if (chains.length == 0) return (false);
-        let chain = chains[0];
-        if (withSpecVersions) {
-            let specVersions = await this.poolREADONLY.query(`select specVersion, blockNumber, blockHash from specVersions where chainID = '${chainID}' and blockNumber > 0 order by specVersion`);
-            chain.specVersions = specVersions;
-        }
-        // because some chains don't have subscribeStorage support (and subscribeStorage updates blocksCovered...)
-        if (chain.blocksCovered == null || chain.blocksCovered < chain.blocksFinalized) {
-            chain.blocksCovered = chain.blocksFinalized
-        }
-        if (chainID == paraTool.chainIDPolkadot || chainID == paraTool.chainIDKusama) {
-            let paraIDs = await this.poolREADONLY.query(`select paraID from chainparachain where chainID = '${chainID}'`);
-            for (let i = 0; i < paraIDs.length; i++) {
-                let paraID = paraIDs[i].paraID;
-                this.paraIDs.push(paraID);
-
-            }
-        }
-        return chain;
+        return null;
     }
 
     countTopicLen(text_signature_full) {
@@ -784,7 +617,6 @@ from chain where chainID = '${chainID}' limit 1`);
         } catch (err) {
             console.log(err)
         }
-        console.log(`curatedABIs`, curatedABIs)
         return [abis, curatedABIs];
     }
 
@@ -812,24 +644,6 @@ from chain where chainID = '${chainID}' limit 1`);
         this.chainID = chain.chainID;
         this.chainName = chain.chainName;
         [this.contractABIs, this.curatedABIs] = await this.getContractABI();
-    }
-
-    async get_chain_hostname_endpoint(chain, useWSBackfill) {
-        if (useWSBackfill) {
-            return chain.WSBackfill
-        }
-        let hostname = os.hostname();
-        let endpoints = await this.poolREADONLY.query(`select endpoint from chainhostnameendpoint where chainID = '${chain.chainID}' and hostname = '${hostname}'`);
-        if (endpoints.length > 0) {
-            let endpoint = parseInt(endpoints[0].endpoint, 10);
-            if (endpoint == 1 && (chain.WSEndpoint2 != null) && chain.WSEndpoint2.length > 0) {
-                return (chain.WSEndpoint2)
-            }
-            if (endpoint == 2 && (chain.WSEndpoint3 != null) && chain.WSEndpoint3.length > 0) {
-                return (chain.WSEndpoint3)
-            }
-        }
-        return (chain.WSEndpoint);
     }
 
     getExitOnDisconnect() {
@@ -949,529 +763,6 @@ from chain where chainID = '${chainID}' limit 1`);
                 this.bqTablesCallsEvents[c.table_name].columns[c.column_name] = c;
             }
         }
-    }
-
-    async get_api(chain, useWSBackfill = false) {
-        const chainID = chain.chainID;
-        const {
-            ApiPromise,
-            WsProvider
-        } = require("@polkadot/api");
-        const {
-            Metadata,
-            TypeRegistry,
-            StorageKey,
-            decorateStorage
-        } = require('@polkadot/types');
-        let endpoint = await this.get_chain_hostname_endpoint(chain, useWSBackfill);
-        this.APIWSEndpoint = endpoint;
-        const provider = new WsProvider(endpoint);
-        //let crawls2 = this
-        provider.on('disconnected', () => {
-            this.setDisconnected()
-            let isDisconneted = this.getDisconnected()
-            let exitOnDisconnect = this.getExitOnDisconnect()
-            let disconnectedCnt = this.getDisconnectedCnt()
-            console.log(`*CHAIN API DISCONNECTED [exitOnDisconnect=${exitOnDisconnect}]  [disconnected=${isDisconneted}]`, chain.chainID);
-            if (exitOnDisconnect) process.exit(1);
-            if (disconnectedCnt >= 10) {
-                console.log(`*CHAIN API DISCONNECTED max fail reached!`, chain.chainID);
-                return false
-            }
-
-        });
-        provider.on('connected', () => {
-            this.setConnected()
-            let exitOnDisconnect = this.getExitOnDisconnect()
-            console.log(`*CHAIN API connected [exitOnDisconnect=${exitOnDisconnect}]`, chain.chainID)
-        });
-        provider.on('error', (error) => {
-            this.setErrored()
-            let isErrored = this.getErrored()
-            let exitOnDisconnect = this.getExitOnDisconnect()
-            console.log(`CHAIN API error [exitOnDisconnect=${exitOnDisconnect}] [errored=${isErrored}]`, chain.chainID)
-        });
-
-        var api = false;
-        // https://polkadot.js.org/docs/api/start/types.extend/
-        // https://github.com/polkadot-js/apps/tree/master/packages/apps-config
-        if (chainID == paraTool.chainIDSubsocial) {
-            const typesDef = require("@subsocial/types");
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef.typesBundle.spec.subsocial.types
-            });
-        } else if (chainID == paraTool.chainIDSora) {
-            const typesDef = require("@sora-substrate/type-definitions");
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef.types
-            });
-        } else if (chainID == paraTool.chainIDZeitgeist) {
-            const typesDef = require("@zeitgeistpm/type-defs");
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef.index.types,
-                rpc: typesDef.index.rpc
-            });
-        } else if (chainID == paraTool.chainIDCrustShadow || chainID == 2008) {
-            const typesDef = require("@crustio/type-definitions");
-            console.log(typesDef.types);
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef.types
-                ///rpc: typesDef.typesBundleForPolkadot.spec.crust.rpc
-            });
-        } else if (chainID == paraTool.chainIDDarwiniaCrab) {
-            const typesDef = require("@darwinia/types");
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef
-            });
-        } else if (chainID == paraTool.chainIDKhala || chainID == paraTool.chainIDPhala) {
-            const typesDef = require("@phala/typedefs");
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef.typesChain.Khala
-            });
-        } else if (chainID == paraTool.chainIDLaminar) {
-            const typesDef = require("@laminar/type-definitions");
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef.index.types,
-                rpc: typesDef.index.rpc
-            });
-        } else if (chainID == paraTool.chainIDPontem) {
-            const typesDef = require("pontem-types-bundle");
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef.pontemDefinitions.types,
-                rpc: typesDef.pontemDefinitions.rpc
-            });
-        } else if (chainID == paraTool.chainIDUnique && false) {
-            // https://github.com/UniqueNetwork/unique-types-js/tree/fe923e4112ec03f8c8c680cc043da69ef33efa27
-            const typesDef = require("@unique-nft/unique-mainnet-types"); // problematic dependency
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef
-            });
-        } else if (chainID == paraTool.chainIDKintsugi) {
-            const typesDef = require("@interlay/interbtc-types");
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef.default.types,
-                rpc: typesDef.default.rpc
-            });
-            console.log(`You are connected to KINTSUGI chain ${chainID} endpoint=${endpoint} with types + rpc`);
-        } else if (chainID == paraTool.chainIDKilt) {
-            const typesDef = require("@kiltprotocol/type-definitions");
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef.typeBundleForPolkadot.types
-            });
-            console.log(`You are connected to KILT chain ${chainID} endpoint=${endpoint} with types but not rpc`);
-        } else if ((chainID == paraTool.chainIDEncointer)) {
-            /*
-            const typesDef = require("@encointer/types")
-            api = await ApiPromise.create({
-                provider: provider,
-                types: typesDef.default.types
-            });
-            */
-            const OverrideBundleDefinition = {
-                "spec": {
-                    "encointer-parachain": {
-                        "types": [{
-                                "minmax": [
-                                    3,
-                                    null
-                                ],
-                                "types": {
-                                    "CommunityIdentifier": {
-                                        "geohash": "GeoHash",
-                                        "digest": "CidDigest"
-                                    },
-                                    "GeoHash": "[u8; 5]",
-                                    "CidDigest": "[u8; 4]"
-                                }
-                            },
-                            {
-                                "minmax": [
-                                    0,
-                                    2
-                                ],
-                                "types": {
-                                    "ShardIdentifier": "Hash",
-                                    "GetterArgs": "(AccountId, CommunityIdentifier)",
-                                    "Enclave": {
-                                        "pubkey": "AccountId",
-                                        "mrenclave": "Hash",
-                                        "timestamp": "u64",
-                                        "url": "Text"
-                                    },
-                                    "PublicGetter": {
-                                        "_enum": {
-                                            "total_issuance": "CommunityIdentifier",
-                                            "participant_count": "CommunityIdentifier",
-                                            "meetup_count": "CommunityIdentifier",
-                                            "ceremony_reward": "CommunityIdentifier",
-                                            "location_tolerance": "CommunityIdentifier",
-                                            "time_tolerance": "CommunityIdentifier",
-                                            "scheduler_state": "CommunityIdentifier"
-                                        }
-                                    },
-                                    "TrustedGetter": {
-                                        "_enum": {
-                                            "balance": "(AccountId, CommunityIdentifier)",
-                                            "participant_index": "(AccountId, CommunityIdentifier)",
-                                            "meetup_index": "(AccountId, CommunityIdentifier)",
-                                            "attestations": "(AccountId, CommunityIdentifier)",
-                                            "meetup_registry": "(AccountId, CommunityIdentifier)"
-                                        }
-                                    },
-                                    "TrustedGetterSigned": {
-                                        "getter": "TrustedGetter",
-                                        "signature": "Signature"
-                                    },
-                                    "Getter": {
-                                        "_enum": {
-                                            "public": "PublicGetter",
-                                            "trusted": "TrustedGetterSigned"
-                                        }
-                                    },
-                                    "ClientRequest": {
-                                        "_enum": {
-                                            "PubKeyWorker": null,
-                                            "MuRaPortWorker": null,
-                                            "StfState": "(Getter, ShardIdentifier)"
-                                        }
-                                    },
-                                    "WorkerEncoded": "Vec<u8>",
-                                    "Request": {
-                                        "shard": "ShardIdentifier",
-                                        "cyphertext": "WorkerEncoded"
-                                    },
-                                    "TrustedCallSigned": {
-                                        "call": "TrustedCall",
-                                        "nonce": "u32",
-                                        "signature": "Signature"
-                                    },
-                                    "TrustedCall": {
-                                        "_enum": {
-                                            "balance_transfer": "BalanceTransferArgs",
-                                            "ceremonies_register_participant": "RegisterParticipantArgs",
-                                            "ceremonies_register_attestations": "RegisterAttestationsArgs",
-                                            "ceremonies_grant_reputation": "GrantReputationArgs"
-                                        }
-                                    },
-                                    "BalanceTransferArgs": "(AccountId, AccountId, CommunityIdentifier, BalanceType)",
-                                    "RegisterParticipantArgs": "(AccountId, CommunityIdentifier, Option<ProofOfAttendance<MultiSignature, AccountId>>)",
-                                    "RegisterAttestationsArgs": "(AccountId, Vec<Attestation<MultiSignature, AccountId, u64>>)",
-                                    "GrantReputationArgs": "(AccountId, CommunityIdentifier, AccountId)",
-                                    "BalanceType": "i128",
-                                    "BalanceEntry": {
-                                        "principal": "BalanceType",
-                                        "lastUpdate": "BlockNumber"
-                                    },
-                                    "Demurrage": "BalanceType",
-                                    "BusinessIdentifier": {
-                                        "communityIdentifier": "CommunityIdentifier",
-                                        "controller": "AccountId"
-                                    },
-                                    "OfferingIdentifier": "u32",
-                                    "BusinessData": {
-                                        "url": "PalletString",
-                                        "last_oid": "u32"
-                                    },
-                                    "OfferingData": {
-                                        "url": "PalletString"
-                                    },
-                                    "PalletString": "Text",
-                                    "IpfsCid": "Text",
-                                    "FixedI64F64": {
-                                        "bits": "i128"
-                                    },
-                                    "CeremonyIndexType": "u32",
-                                    "CeremonyPhaseType": {
-                                        "_enum": [
-                                            "Registering",
-                                            "Assigning",
-                                            "Attesting"
-                                        ]
-                                    },
-                                    "ParticipantIndexType": "u64",
-                                    "MeetupIndexType": "u64",
-                                    "AttestationIndexType": "u64",
-                                    "MeetupAssignment": "(MeetupIndexType, Option<Location>)",
-                                    "MeetupTimeOffsetType": "i32",
-                                    "Reputation": {
-                                        "_enum": [
-                                            "Unverified",
-                                            "UnverifiedReputable",
-                                            "VerifiedUnlinked",
-                                            "VerifiedLinked"
-                                        ]
-                                    },
-                                    "CommunityReputation": {
-                                        "communityIdentifier": "CommunityIdentifier",
-                                        "reputation": "Reputation"
-                                    },
-                                    "ClaimOfAttendance": {
-                                        "claimantPublic": "AccountId",
-                                        "ceremonyIndex": "CeremonyIndexType",
-                                        "communityIdentifier": "CommunityIdentifier",
-                                        "meetupIndex": "MeetupIndexType",
-                                        "location": "Location",
-                                        "timestamp": "Moment",
-                                        "numberOfParticipantsConfirmed": "u32",
-                                        "claimantSignature": "Option<MultiSignature>"
-                                    },
-                                    "ClaimOfAttendanceSigningPayload": {
-                                        "claimantPublic": "AccountId",
-                                        "ceremonyIndex": "CeremonyIndexType",
-                                        "communityIdentifier": "CommunityIdentifier",
-                                        "meetupIndex": "MeetupIndexType",
-                                        "location": "Location",
-                                        "timestamp": "Moment",
-                                        "numberOfParticipantsConfirmed": "u32"
-                                    },
-                                    "AssignmentCount": {
-                                        "bootstrappers": "ParticipantIndexType",
-                                        "reputables": "ParticipantIndexType",
-                                        "endorsees": "ParticipantIndexType",
-                                        "newbies": "ParticipantIndexType"
-                                    },
-                                    "Assignment": {
-                                        "bootstrappersReputables": "AssignmentParams",
-                                        "endorsees": "AssignmentParams",
-                                        "newbies": "AssignmentParams",
-                                        "locations": "AssignmentParams"
-                                    },
-                                    "AssignmentParams": {
-                                        "m": "u64",
-                                        "s1": "u64",
-                                        "s2": "u64"
-                                    },
-                                    "CommunityCeremonyStats": {
-                                        "communityCeremony": "(CommunityIdentifier, CeremonyIndexType)",
-                                        "assignment": "Assignment",
-                                        "assignmentCount": "AssignmentCount",
-                                        "meetupCount": "MeetupIndexType",
-                                        "meetups": "Vec<Meetup>"
-                                    },
-                                    "Meetup": {
-                                        "index": "MeetupIndexType",
-                                        "location": "LocationRpc",
-                                        "time": "Moment",
-                                        "registrations": "Vec<(AccountId, ParticipantRegistration)>"
-                                    },
-                                    "ParticipantRegistration": {
-                                        "index": "ParticipantIndexType",
-                                        "registrationType": "RegistrationType"
-                                    },
-                                    "RegistrationType": {
-                                        "_enum": [
-                                            "Bootstrapper",
-                                            "Reputable",
-                                            "Endorsee",
-                                            "Newbie"
-                                        ]
-                                    },
-                                    "Attestation": {
-                                        "claim": "ClaimOfAttendance",
-                                        "signature": "MultiSignature",
-                                        "public": "AccountId"
-                                    },
-                                    "ProofOfAttendance": {
-                                        "proverPublic": "AccountId",
-                                        "ceremonyIndex": "CeremonyIndexType",
-                                        "communityIdentifier": "CommunityIdentifier",
-                                        "attendeePublic": "AccountId",
-                                        "attendeeSignature": "MultiSignature"
-                                    },
-                                    "CommunityIdentifier": {
-                                        "geohash": "GeoHash",
-                                        "digest": "CidDigest"
-                                    },
-                                    "GeoHash": "[u8; 5]",
-                                    "CidDigest": "[u8; 4]",
-                                    "CommunityCeremony": "(CommunityIdentifier,CeremonyIndexType)",
-                                    "NominalIncomeType": "BalanceType",
-                                    "DegreeRpc": "Text",
-                                    "DegreeFixed": "i128",
-                                    "Location": {
-                                        "lat": "DegreeFixed",
-                                        "lon": "DegreeFixed"
-                                    },
-                                    "LocationRpc": {
-                                        "lat": "DegreeRpc",
-                                        "lon": "DegreeRpc"
-                                    },
-                                    "CidName": {
-                                        "cid": "CommunityIdentifier",
-                                        "name": "Text"
-                                    },
-                                    "CommunityMetadataType": {
-                                        "name": "Text",
-                                        "symbol": "Text",
-                                        "assets": "Text",
-                                        "theme": "Option<Text>",
-                                        "url": "Option<Text>"
-                                    },
-                                    "SystemNumber": "u32",
-                                    "SchedulerState": "(CeremonyIndexType, CeremonyPhaseType, SystemNumber)"
-                                }
-                            }
-                        ],
-                        "signedExtensions": {
-                            "ChargeAssetTxPayment": {
-                                "extrinsic": {
-                                    "tip": "Compact<Balance>",
-                                    "assetId": "Option<CommunityIdentifier>"
-                                },
-                                "payload": {}
-                            }
-                        }
-                    }
-                }
-            }
-            api = await ApiPromise.create({
-                provider,
-                typesBundle: OverrideBundleDefinition,
-            });
-            console.log(`You are connected to ENCOINTER chain ${chainID} endpoint=${endpoint} with types but not rpc`);
-
-        } else if ((chainID == paraTool.chainIDAstar || chainID == paraTool.chainIDShiden || chainID == paraTool.chainIDShibuya)) {
-            // const options = require("@astar-network/astar-api");
-            const typesBundle = {
-                spec: {
-                    shiden: {
-                        types: [{
-                            // on all versions
-                            minmax: [0, undefined],
-                            types: {
-                                Keys: 'AccountId',
-                                Address: 'MultiAddress',
-                                LookupSource: 'MultiAddress',
-                                AmountOf: 'Amount',
-                                Amount: 'i128',
-                                SmartContract: {
-                                    _enum: {
-                                        Evm: 'H160',
-                                        Wasm: 'AccountId'
-                                    }
-                                },
-                                EraStakingPoints: {
-                                    total: 'Balance',
-                                    stakers: 'BTreeMap<AccountId, Balance>',
-                                    formerStakedEra: 'EraIndex',
-                                    claimedRewards: 'Balance'
-                                },
-                                PalletDappsStakingEraStakingPoints: {
-                                    total: 'Balance',
-                                    stakers: 'BTreeMap<AccountId, Balance>',
-                                    formerStakedEra: 'EraIndex',
-                                    claimedRewards: 'Balance'
-                                },
-                                EraRewardAndStake: {
-                                    rewards: 'Balance',
-                                    staked: 'Balance'
-                                },
-                                PalletDappsStakingEraRewardAndStake: {
-                                    rewards: 'Balance',
-                                    staked: 'Balance'
-                                },
-                                EraIndex: 'u32'
-                            }
-                        }]
-                    }
-                }
-            };
-            api = await ApiPromise.create({
-                provider,
-                typesBundle
-            });
-            console.log(`You are connected to ASTAR/SHIDEN chain ${chainID} endpoint=${endpoint} with options`);
-        } else if (chainID == paraTool.chainIDMoonbeam) {
-            const typesBundlePre900 = require("moonbeam-types-bundle");
-            api = await ApiPromise.create({
-                provider: provider,
-                typesBundle: typesBundlePre900.typesBundlePre900,
-                rpc: typesBundlePre900.typesBundlePre900.spec.moonbeam.rpc
-            });
-            console.log(`You are connected to MOONBEAM chain ${chainID} endpoint=${endpoint} with types + rpc`);
-        } else if (chainID == paraTool.chainIDMoonriver) {
-            const typesBundlePre900 = require("moonbeam-types-bundle");
-            api = await ApiPromise.create({
-                provider: provider,
-                typesBundle: typesBundlePre900.typesBundlePre900,
-                rpc: typesBundlePre900.typesBundlePre900.spec.moonriver.rpc
-            });
-            console.log(`You are connected to MOONRIVER chain ${chainID} endpoint=${endpoint} with types + rpc`);
-        } else if (chainID == paraTool.chainIDMoonbaseAlpha || chainID == paraTool.chainIDMoonbaseBeta) {
-            const typesBundlePre900 = require("moonbeam-types-bundle");
-            api = await ApiPromise.create({
-                provider: provider,
-                typesBundle: typesBundlePre900.typesBundlePre900,
-                rpc: typesBundlePre900.typesBundlePre900.spec.moonbase.rpc
-            });
-            console.log(`You are connected to MoonBase chain ${chainID} endpoint=${endpoint} with types + rpc`);
-        } else if (chainID == paraTool.chainIDBifrostKSM || chainID == paraTool.chainIDBifrostDOT) {
-            const typeDefs = require("@bifrost-finance/type-definitions");
-            api = await ApiPromise.create({
-                provider: provider,
-                typesBundle: typeDefs.typesBundleForPolkadot,
-                rpc: typeDefs.typesBundleForPolkadot.spec.bifrost.rpc
-            });
-            console.log(`You are connected to BIFROST chain ${chainID} endpoint=${endpoint} with types + rpc`);
-        } else if ((chainID == paraTool.chainIDParallel) || (chainID == paraTool.chainIDHeiko)) {
-            const typeDefs = require("@parallel-finance/type-definitions");
-            api = await ApiPromise.create({
-                provider: provider,
-                typesBundle: typeDefs.typesBundleForPolkadot,
-                rpc: typeDefs.typesBundleForPolkadot.spec.parallel.rpc
-            });
-            console.log(`You are connected to PARALLEL chain ${chainID} endpoint=${endpoint} with types + rpc`);
-        } else if (chain.chainID == paraTool.chainIDAcala) {
-            const typeDefs = require("@acala-network/type-definitions");
-            api = await ApiPromise.create({
-                provider: provider,
-                typesBundle: typeDefs.typesBundleForPolkadot,
-                rpc: typeDefs.typesBundleForPolkadot.spec.acala.rpc,
-                signedExtensions: typeDefs.signedExtensions
-            });
-            console.log(`You are connected to ACALA chain ${chainID} endpoint=${endpoint} with types + rpc + signedExt`);
-        } else if (chain.chainID == paraTool.chainIDKarura) {
-            const typeDefs = require("@acala-network/type-definitions");
-            api = await ApiPromise.create({
-                provider: provider,
-                typesBundle: typeDefs.typesBundleForPolkadot,
-                rpc: typeDefs.typesBundleForPolkadot.spec.karura.rpc,
-                signedExtensions: typeDefs.signedExtensions
-            });
-            console.log(`You are connected to KARURA chain ${chainID} endpoint=${endpoint} with types + rpc + signedExt`);
-        } else {
-            api = await ApiPromise.create({
-                provider: provider
-            });
-            console.log(`You are connected to chain ${chainID} endpoint=${endpoint}`);
-        }
-
-        api.on('disconnected', () => {
-            this.setDisconnected()
-            console.log('CHAIN API DISCONNECTED', chain.chainID);
-            if (this.exitOnDisconnect) process.exit(1);
-        });
-        api.on('connected', () => {
-            this.setConnected()
-            console.log('CHAIN API connected', chain.chainID)
-
-        });
-        api.on('error', (error) => {
-            this.setErrored()
-            console.log('CHAIN API error', chain.chainID, error)
-        });
-        return api;
     }
 
     async insertBTRows(tbl, rows, tableName = "") {
@@ -1892,50 +1183,7 @@ from chain where chainID = '${chainID}' limit 1`);
         return `${chainID}/${logDT.replaceAll("-","/")}/${blockNumber}.json.gz`
     }
 
-    gs_substrate_file_name(relayChain, paraID, blockNumber) {
-        let folder = Math.floor(blockNumber / 10000).toString().padStart(8, "0");
-        return `${relayChain}/${paraID}/${folder}/${blockNumber}.json.gz`
-    }
-
-    async store_stateTraceBlock_gs(chainID, blockNumber, blockTrace) {
-        return;
-        const bucketName = 'crypto_substrate_traces';
-        const storage = new Storage();
-        const bucket = storage.bucket(bucketName);
-        let relayChain = paraTool.getRelayChainByChainID(chainID)
-        let paraID = paraTool.getParaIDfromChainID(chainID)
-        let fileName = this.gs_substrate_file_name(relayChain, paraID, blockNumber)
-        const file = bucket.file(fileName);
-        const writeStream = file.createWriteStream({
-            contentType: 'application/json',
-            gzip: true
-        });
-        writeStream.write(JSON.stringify(blockTrace));
-        writeStream.end();
-
-        // Wait for the write stream to finish writing
-        await new Promise((resolve, reject) => {
-            writeStream.on('finish', resolve);
-            writeStream.on('error', reject);
-        });
-        console.log(`gs://${bucketName}/${fileName}`);
-    }
-
-    async fetch_stateTraceBlock_gs(chainID, blockNumber) {
-        const bucketName = 'crypto_substrate_traces';
-        const storage = new Storage();
-        const bucket = storage.bucket(bucketName);
-        let relayChain = paraTool.getRelayChainByChainID(chainID)
-        let paraID = paraTool.getParaIDfromChainID(chainID)
-        let fileName = this.gs_substrate_file_name(relayChain, paraID, blockNumber)
-        const file = bucket.file(fileName);
-        const buffer = await file.download();
-        const r = JSON.parse(buffer[0]);
-        return r
-    }
-
     async fetch_evm_block_gs(chainID, blockNumber) {
-        // TODO: shift back to substrate model
         let sql = `select UNIX_TIMESTAMP(blockDT) blockTS from block${chainID} where blockNumber = '${blockNumber}' limit 1`
         let blocks = await this.poolREADONLY.query(sql);
         if (blocks.length == 1) {
@@ -1955,148 +1203,23 @@ from chain where chainID = '${chainID}' limit 1`);
 
 
 
-    async fetch_substrate_block_gs(chainID, blockNumber) {
-        const storage = new Storage();
-        const bucketName = 'crypto_substrate';
-        const bucket = storage.bucket(bucketName);
-        let relayChain = paraTool.getRelayChainByChainID(chainID)
-        let paraID = paraTool.getParaIDfromChainID(chainID)
-        const fileName = this.gs_substrate_file_name(relayChain, paraID, blockNumber);
-        const file = bucket.file(fileName);
-        const buffer = await file.download();
-        const r = JSON.parse(buffer[0]);
-        let evm_chainID = null;
-        if (chainID == 2004) evm_chainID = 1284;
-        if (chainID == 2006) evm_chainID = 592;
-        if (evm_chainID) {
-            let x = fetch_evm_block_gs(evm_chainID, blockNumber);
-            if (x) {
-                r.evmBlock = x.block;
-            }
-        }
-        return r;
-    }
-
     async fetch_block_gs(chainID, blockNumber) {
         try {
-            if ((chainID == 2004 && blockNumber >= 3683465 && blockNumber <= 3690513) || (chainID == 1) ||
-                ((chainID == 0) && blockNumber < 16000000) || ((chainID == 2) && blockNumber < 18300000)) { // fetch { blockraw, events, feed } from GS storage
-                return this.fetch_evm_block_gs(chainID, blockNumber);
-            } else {
-                return this.fetch_substrate_block_gs(chainID, blockNumber);
-            }
+            return this.fetch_evm_block_gs(chainID, blockNumber);
         } catch (e) {
             console.log(e)
             return null;
         }
     }
 
-    async extract_blocks(bnStart, bnEnd, chainID) {
-        let relayChain = paraTool.getRelayChainByChainID(chainID)
-        let paraID = paraTool.getParaIDfromChainID(chainID)
-        const tableChain = this.getTableChain(chainID);
-        const {
-            Storage
-        } = require('@google-cloud/storage');
-        const storage = new Storage();
-        let bucketName = "crypto_substrate";
-        const bucket = storage.bucket(bucketName);
-        let jmp = 100;
 
-
-        for (let bn0 = bnStart; bn0 <= bnEnd; bn0 += jmp) {
-            let bn1 = bn0 + jmp - 1;
-            if (bn1 > bnEnd) bn1 = bnEnd;
-            // check if we have archived
-            let sql = `select sum(if(archived=1,1,0)) as archived, count(*) cnt from block${chainID} where blockNumber >= ${bn0} and blockNumber <= ${bn1}`;
-            let recs = await this.poolREADONLY.query(sql);
-            if (recs.length > 0) {
-                let c = recs[0];
-                let archived = parseInt(c.archived);
-                let cnt = parseInt(c.cnt);
-                if (archived == cnt) {
-                    // we have no work to do!
-                    console.log("NO WORK TO DO", bn0, bn1, c);
-                    continue;
-                } else {
-                    console.log("... workload: ", bn0, bn1, "archived", c.archived, "cnt", cnt);
-                }
-            }
-
-
-            let start = paraTool.blockNumberToHex(bn0);
-            let end = paraTool.blockNumberToHex(bn1);
-            let [rows] = await tableChain.getRows({
-                start: start,
-                end: end
-            });
-            let out = [];
-            for (const row of rows) {
-                let blockNumber = parseInt(row.id.substr(2), 16);
-                let r = this.build_block_from_row(row);
-                let result = {}
-                result["blockraw"] = r["block"];
-                result["events"] = r["events"];
-                result["feed"] = r["feed"];
-                if (result["blockraw"] && result["events"] && result["feed"]) {
-                    const compressedData = JSON.stringify(result);
-                    const fileName = this.gs_substrate_file_name(relayChain, paraID, blockNumber);
-                    const file = bucket.file(fileName);
-                    const writeStream = file.createWriteStream({
-                        contentType: 'application/json',
-                        gzip: true
-                    });
-                    writeStream.write(compressedData);
-                    writeStream.end();
-
-                    // Wait for the write stream to finish writing
-                    await new Promise((resolve, reject) => {
-                        writeStream.on('finish', resolve);
-                        writeStream.on('error', reject);
-                    });
-                    console.log(`gs://${bucketName}/${fileName}`);
-                    out.push(`(${blockNumber}, 1)`)
-                } else {
-                    console.log("PROBLEM", r);
-                }
-            }
-            if (out.length > 0) {
-                await this.upsertSQL({
-                    "table": `block${chainID}`,
-                    "keys": ["blockNumber"],
-                    "vals": ["archived"],
-                    "data": out,
-                    "replace": ["archived"]
-                });
-            }
-        }
-    }
-
-    async fetch_block(chainID, blockNumber, families = ["feed", "finalized"], feedOnly = false, blockHash = false) {
-        if ((chainID == 2004 && blockNumber >= 3683465 && blockNumber <= 3690513) || (chainID == 1) || ((chainID <= 2) && blockNumber < 35000)) { // fetch { blockraw, events, feed } from GS storage
-            try {
-                let r = await this.fetch_block_gs(chainID, blockNumber);
-                console.log("fetch_block", r);
-                return r;
-            } catch (e) {
-                console.log("ERR", e);
-            }
-        }
-
-        const filter = {
-            filter: [{
-                family: families,
-                cellLimit: 100
-            }]
-        };
-        const tableChain = this.getTableChain(chainID);
-        let row = null
+    async fetch_block(chainID, blockNumber) {
         try {
-            [row] = await tableChain.row(paraTool.blockNumberToHex(blockNumber)).get(filter);
-            let x = this.build_feed_from_row(row, blockHash)
-            return x;
+            let r = await this.fetch_block_gs(chainID, blockNumber);
+            console.log("fetch_block", r);
+            return r;
         } catch (e) {
-
+            console.log("ERR", e);
         }
         return null
     }
